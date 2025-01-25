@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.foundation.android)
     implementation(libs.androidx.activity.ktx)
+    implementation("com.airbnb.android:lottie-compose:6.6.2")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

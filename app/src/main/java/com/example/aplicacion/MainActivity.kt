@@ -26,9 +26,16 @@ import com.example.aplicacion.ui.theme.AplicacionTheme
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import android.speech.tts.TextToSpeech
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.animateLottieCompositionAsState
+import com.airbnb.lottie.compose.rememberLottieComposition
 import java.util.Locale
 
 
@@ -100,95 +107,123 @@ fun MainContent() {
 
 @Composable
 fun ProductScreen(onLogoutClick: () -> Unit) {
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFF193373))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Productos Disponibles",
-            style = TextStyle(
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            ),
-            modifier = Modifier.padding(bottom = 16.dp)
+        // Encabezado con logo y nombre
+        Image(
+            painter = painterResource(id = R.drawable.panda),
+            contentDescription = "Logo Panda",
+            modifier = Modifier
+                .size(120.dp)
+                .padding(bottom = 8.dp)
         )
+        Text(
+            text = "Peet Food El Panda",
+            style = TextStyle(
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        )
+        Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
-            item {
-                // Producto 1
-                ProductItem(
-                    name = "Cachupin",
-                    description = "Alimento Perro Adulto Cachupin Carne y Arroz 15kg",
-                    imageRes = R.drawable.alimento_perro_adulto_cachupin_carne_y_arroz_15kg
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
-                // Producto 2
-                ProductItem(
-                    name = "Cannes",
-                    description = "Alimento Perro Adulto Cannes Carne y Cereales 15g",
-                    imageRes = R.drawable.alimento_perro_adulto_cannes_carne_y_cereales_15g
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            item {
-                // Producto 3
-                ProductItem(
-                    name = "Doko",
-                    description = "Alimento Perro Adulto Doko Carne y Pollo 15 kg",
-                    imageRes = R.drawable.alimento_perro_adulto_doko_carne_y_pollo_15_kg
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-
-            item {
-                Button(onClick = onLogoutClick) {
-                    Text(text = "Cerrar sesión")
+            items(getProductList()) { product ->
+                ProductItem(product) {
+                    selectedProduct = product
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+
+        selectedProduct?.let {
+            ProductDetailModal(product = it, onDismiss = { selectedProduct = null })
         }
     }
 }
 
-
 @Composable
-fun ProductItem(name: String, description: String, imageRes: Int) {
-    Column(
+fun ProductItem(product: Product, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp)
-            .background(Color.White, shape = RoundedCornerShape(8.dp))
-            .border(1.dp, Color.Gray, shape = RoundedCornerShape(8.dp))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .clickable(onClick = onClick)
+            .background(Color.White, shape = RoundedCornerShape(16.dp))
+            .padding(16.dp)
+            .border(1.dp, Color.Gray, shape = RoundedCornerShape(16.dp))
     ) {
         Image(
-            painter = painterResource(id = imageRes),
-            contentDescription = "Imagen de $name",
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentScale = ContentScale.Fit
+            painter = painterResource(id = product.imageRes),
+            contentDescription = "Imagen de ${product.name}",
+            modifier = Modifier.size(80.dp),
+            contentScale = ContentScale.Crop
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = name,
-            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = description,
-            style = TextStyle(fontSize = 16.sp)
-        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(
+                text = product.name,
+                style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$${product.price}",
+                style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            )
+        }
     }
 }
+
+@Composable
+fun ProductDetailModal(product: Product, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = product.name, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Image(
+                    painter = painterResource(id = product.imageRes),
+                    contentDescription = "Imagen de ${product.name}",
+                    modifier = Modifier.fillMaxWidth().height(200.dp),
+                    contentScale = ContentScale.Fit
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = product.description)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "Precio: $${product.price}", fontWeight = FontWeight.Bold)
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Volver")
+            }
+        },
+        dismissButton = {
+            Button(onClick = { /* Lógica para agregar al carro */ }) {
+                Text("Agregar al carrito")
+            }
+        }
+    )
+}
+
+data class Product(val name: String, val description: String, val price: Double, val imageRes: Int)
+
+fun getProductList() = listOf(
+    Product("Cachupin", "Alimento Perro Adulto Cachupin Carne y Arroz 15kg", 19.99, R.drawable.alimento_perro_adulto_cachupin_carne_y_arroz_15kg),
+    Product("Cannes", "Alimento Perro Adulto Cannes Carne y Cereales 15kg", 14.99, R.drawable.alimento_perro_adulto_cannes_carne_y_cereales_15g),
+    Product("Doko", "Alimento Perro Adulto Doko Carne y Pollo 15kg", 23.49, R.drawable.alimento_perro_adulto_doko_carne_y_pollo_15_kg)
+)
+
 
 
 @Composable
@@ -211,6 +246,9 @@ fun LoginScreen(
     fun toggleHighContrast() {
         isHighContrast = !isHighContrast
     }
+    // Estados para controlar el foco en los TextFields
+    var isEmailFocused by remember { mutableStateOf(false) }
+    var isPasswordFocused by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -238,12 +276,17 @@ fun LoginScreen(
                         ),
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
-                    Image(
-                        painter = painterResource(id = R.drawable.panda),
-                        contentDescription = "Logo de Peet Food, El Panda",
-                        modifier = Modifier
-                            .size(160.dp)
-                            .padding(vertical = 4.dp)
+                    // Lottie animation
+                    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.pandaanimacion))
+                    val progress by animateLottieCompositionAsState(
+                        composition = composition,
+                        iterations = LottieConstants.IterateForever
+                    )
+
+                    LottieAnimation(
+                        composition = composition,
+                        progress = { progress },
+                        modifier = Modifier.size(200.dp)
                     )
                     Text(
                         text = "El Panda",
@@ -261,6 +304,8 @@ fun LoginScreen(
                     value = email.value,
                     onValueChange = { email.value = it },
                     colors = TextFieldDefaults.colors(
+                        focusedContainerColor = if (isEmailFocused) Color(0xFFE3F2FD) else Color(0xFFE0EFFA),
+                        unfocusedContainerColor = Color(0xFFF5F5F5),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
@@ -277,6 +322,8 @@ fun LoginScreen(
                     value = password.value,
                     onValueChange = { password.value = it },
                     colors = TextFieldDefaults.colors(
+                        focusedContainerColor = if (isPasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                        unfocusedContainerColor = Color(0xFFF5F5F5),
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent
                     ),
@@ -356,16 +403,10 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 16.dp)
-                .align(Alignment.BottomCenter) // Alineación horizontal centrada en la parte inferior
+                .align(Alignment.BottomCenter)
         )
     }
 }
-
-
-
-
-
-
 
 
 
@@ -376,6 +417,9 @@ fun ChangePasswordScreen(onPasswordChanged: () -> Unit) {
     val confirmPassword = remember { mutableStateOf("") }
     val error = remember { mutableStateOf(false) }
     val showDialog = remember { mutableStateOf(false) }
+    val isNewPasswordFocused by remember { mutableStateOf(false) }
+    val isConfirmPasswordFocused by remember { mutableStateOf(false) }
+
 
     if (showDialog.value) {
         AlertDialog(
@@ -407,11 +451,14 @@ fun ChangePasswordScreen(onPasswordChanged: () -> Unit) {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
+
         TextField(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(20.dp),
             value = newPassword.value,
             onValueChange = { newPassword.value = it },
             colors = TextFieldDefaults.colors(
+                focusedContainerColor = if (isNewPasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                unfocusedContainerColor = Color(0xFFF5F5F5),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
@@ -424,10 +471,12 @@ fun ChangePasswordScreen(onPasswordChanged: () -> Unit) {
         )
 
         TextField(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(20.dp),
             value = confirmPassword.value,
             onValueChange = { confirmPassword.value = it },
             colors = TextFieldDefaults.colors(
+                focusedContainerColor = if (isConfirmPasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                unfocusedContainerColor = Color(0xFFF5F5F5),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
@@ -480,6 +529,7 @@ fun RecoverPasswordScreen(onBackToLoginClick: () -> Unit) {
     val recoverSuccess = remember { mutableStateOf(false) }
     var recoveredPassword by remember { mutableStateOf("") }
     val showDialog = remember { mutableStateOf(false) }
+    val isRestorePasswordFocused by remember { mutableStateOf(false) }
 
     if (showDialog.value) {
         AlertDialog(
@@ -523,6 +573,8 @@ fun RecoverPasswordScreen(onBackToLoginClick: () -> Unit) {
             value = email.value,
             onValueChange = { email.value = it },
             colors = TextFieldDefaults.colors(
+                focusedContainerColor = if (isRestorePasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                unfocusedContainerColor = Color(0xFFF5F5F5),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
@@ -586,6 +638,9 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
     val registrationSuccess = remember { mutableStateOf(false) }
     val userExistsError = remember { mutableStateOf(false) }
     val showDialog = remember { mutableStateOf(false) }
+    val isEmailPasswordFocused by remember { mutableStateOf(false) }
+    val isGeneratePasswordFocused by remember { mutableStateOf(false) }
+    val isRepeatPasswordFocused by remember { mutableStateOf(false) }
 
     if (showDialog.value) {
         AlertDialog(
@@ -611,10 +666,12 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TextField(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(20.dp),
             value = email.value,
             onValueChange = { email.value = it },
             colors = TextFieldDefaults.colors(
+                focusedContainerColor = if (isEmailPasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                unfocusedContainerColor = Color(0xFFF5F5F5),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
@@ -626,10 +683,12 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
         )
 
         TextField(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(20.dp),
             value = password.value,
             onValueChange = { password.value = it },
             colors = TextFieldDefaults.colors(
+                focusedContainerColor = if (isGeneratePasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                unfocusedContainerColor = Color(0xFFF5F5F5),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
@@ -642,10 +701,12 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
         )
 
         TextField(
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(20.dp),
             value = confirmPassword.value,
             onValueChange = { confirmPassword.value = it },
             colors = TextFieldDefaults.colors(
+                focusedContainerColor = if (isRepeatPasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                unfocusedContainerColor = Color(0xFFF5F5F5),
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent
             ),
