@@ -1,5 +1,6 @@
 package com.example.aplicacion
 
+import HablarScreen
 import androidx.compose.ui.tooling.preview.Preview
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -37,11 +38,29 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import java.util.Locale
+import androidx.compose.foundation.layout.*
+
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.platform.testTag
+import com.google.android.gms.tasks.Task
+import com.google.firebase.FirebaseApp
+import com.google.firebase.auth.AuthResult
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Inicializar Firebase
+        FirebaseApp.initializeApp(this)
+
         setContent {
             AplicacionTheme {
                 MainContent()
@@ -57,10 +76,8 @@ val contraseñasTemporales = mutableSetOf<String>()
 @Composable
 fun MainContent() {
     var currentScreen by remember { mutableStateOf("login") }
-    val snackbarHostState = remember { SnackbarHostState() }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Fondo de pantalla
         Image(
             painter = painterResource(id = R.drawable.fondo_azul),
             contentDescription = "Fondo de pantalla azul",
@@ -68,7 +85,6 @@ fun MainContent() {
             contentScale = ContentScale.Crop
         )
 
-        // Pantalla de Login, Registro, Recuperación y Productos
         when (currentScreen) {
             "login" -> {
                 LoginScreen(
@@ -79,77 +95,104 @@ fun MainContent() {
                     }
                 )
             }
-            "register" -> {
-                RegisterScreen(
-                    onBackToLoginClick = { currentScreen = "login" }
-                )
-            }
-            "recover" -> {
-                RecoverPasswordScreen(
-                    onBackToLoginClick = { currentScreen = "login" }
-                )
-            }
-            "changePassword" -> {
-                ChangePasswordScreen(
-                    onPasswordChanged = { currentScreen = "login" }
-                )
-            }
-            "products" -> {
-                ProductScreen(
-                    onLogoutClick = { currentScreen = "login" }
-                )
-            }
-        }
+            "register" -> RegisterScreen(onBackToLoginClick = { currentScreen = "login" })
+            "recover" -> RecoverPasswordScreen(onBackToLoginClick = { currentScreen = "login" })
+            "changePassword" -> ChangePasswordScreen(onPasswordChanged = { currentScreen = "login" })
+            "products" -> ProductScreen(
+                onLogoutClick = { currentScreen = "login" },
+                onNavigateToHablar = { currentScreen = "hablar" }
+            )
+            "hablar" -> HablarScreen(onBack = { currentScreen = "products" })
 
-        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+        }
     }
 }
+
 
 @Composable
-fun ProductScreen(onLogoutClick: () -> Unit) {
+fun ProductScreen(onLogoutClick: () -> Unit, onNavigateToHablar: () -> Unit) {
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF193373))
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color(0xFFE3F2FD)),
+        contentAlignment = Alignment.Center
     ) {
-        // Encabezado con logo y nombre
-        Image(
-            painter = painterResource(id = R.drawable.panda),
-            contentDescription = "Logo Panda",
+        Column(
             modifier = Modifier
-                .size(120.dp)
-                .padding(bottom = 8.dp)
-        )
-        Text(
-            text = "Peet Food El Panda",
-            style = TextStyle(
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        )
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize()
+                .fillMaxWidth(0.9f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            items(getProductList()) { product ->
-                ProductItem(product) {
-                    selectedProduct = product
+            // Logo y Nombre de la tienda
+            Image(
+                painter = painterResource(id = R.drawable.panda),
+                contentDescription = "Logo Panda",
+                modifier = Modifier
+                    .size(120.dp)
+                    .padding(bottom = 8.dp)
+            )
+            Text(
+                text = "Peet Food El Panda",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 🔹 Lista de productos con LazyColumn que NO oculta el botón
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f) //
+            ) {
+                items(getProductList()) { product ->
+                    ProductItem(product) {
+                        selectedProduct = product
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 🔹 Botón de "Texto a Voz"
+            Button(
+                onClick = onNavigateToHablar,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
+            ) {
+                Text(text = "Texto a Voz", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 🔹 Botón de "Cerrar Sesión"
+            Button(
+                onClick = onLogoutClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
+            ) {
+                Text(text = "Cerrar Sesión", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
+    }
 
-        selectedProduct?.let {
-            ProductDetailModal(product = it, onDismiss = { selectedProduct = null })
-        }
+    // Mostrar detalles del producto seleccionado
+    selectedProduct?.let {
+        ProductDetailModal(product = it, onDismiss = { selectedProduct = null })
     }
 }
+
+
+
 
 @Composable
 fun ProductItem(product: Product, onClick: () -> Unit) {
@@ -313,7 +356,8 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
-                        .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp)),
+                        .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp))
+                        .testTag("emailField"), // Agregado testTag
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
                 )
 
@@ -332,7 +376,8 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
-                        .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp)),
+                        .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp))
+                        .testTag("passwordField"), // Agregado testTag
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done)
                 )
 
@@ -347,27 +392,20 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        val userIndex = usuariosRegistrados.indexOfFirst { it.first == email.value }
-                        if (userIndex != -1 && usuariosRegistrados[userIndex].second == password.value) {
-                            val isTemporary = contraseñasTemporales.contains(password.value)
-                            onLoginSuccess(isTemporary)
-                            loginError.value = false
-
-
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Inicio de sesión exitoso")
-                            }
-                        } else {
-                            loginError.value = true
-                        }
+                        FirebaseAuthHelper.loginUser(email.value, password.value,
+                            onSuccess = { onLoginSuccess(false) },
+                            onFailure = { loginError.value = true }
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp),
+                        .padding(bottom = 8.dp)
+                        .testTag("loginButton"), // Agregado testTag
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
                 ) {
-                    Text(text = "Iniciar sesión", color = Color.White, fontWeight = FontWeight.Bold, fontSize = textSize)
+                    Text(text = "Iniciar sesión", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+
 
                 TextButton(
                     onClick = {
@@ -554,220 +592,401 @@ fun RecoverPasswordScreen(onBackToLoginClick: () -> Unit) {
         )
     }
 
-    Column(
+    Box(
         modifier = Modifier
-            .background(Color.White, shape = RoundedCornerShape(16.dp))
-            .padding(24.dp)
-            .width(300.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxSize()
+            .background(Color(0xFFE3F2FD)),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Recuperar Contraseña",
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        TextField(
-            shape = RoundedCornerShape(20.dp),
-            value = email.value,
-            onValueChange = { email.value = it },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = if (isRestorePasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
-                unfocusedContainerColor = Color(0xFFF5F5F5),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            placeholder = { Text(text = "Correo Electrónico") },
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp))
-        )
-
-        if (recoverError.value) {
-            Text(
-                text = "Correo no registrado.",
-                color = Color.Red,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        Button(
-            onClick = {
-                val userIndex = usuariosRegistrados.indexOfFirst { it.first == email.value }
-                if (userIndex != -1) {
-                    recoveredPassword = generateTemporaryPassword()
-                    usuariosRegistrados[userIndex] = email.value to recoveredPassword
-                    contraseñasTemporales.add(recoveredPassword)
-                    recoverSuccess.value = true
-                    recoverError.value = false
-                    showDialog.value = true
-                } else {
-                    recoverError.value = true
-                    recoverSuccess.value = false
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
+                .fillMaxWidth(0.85f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Recuperar contraseña", color = Color.White, fontWeight = FontWeight.Bold)
-        }
+            Text(
+                text = "Recuperar Contraseña",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
 
-        TextButton(onClick = onBackToLoginClick) {
-            Text(text = "Volver a Iniciar sesión", color = Color(0xFF0D47A1))
+            TextField(
+                shape = RoundedCornerShape(20.dp),
+                value = email.value,
+                onValueChange = { email.value = it },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = if (isRestorePasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
+                    unfocusedContainerColor = Color(0xFFF5F5F5),
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                ),
+                placeholder = { Text(text = "Correo Electrónico") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp))
+            )
+
+            if (recoverError.value) {
+                Text(
+                    text = "Correo no registrado.",
+                    color = Color.Red,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            Button(
+                onClick = {
+                    val userIndex = usuariosRegistrados.indexOfFirst { it.first == email.value }
+                    if (userIndex != -1) {
+                        recoveredPassword = generateTemporaryPassword()
+                        usuariosRegistrados[userIndex] = email.value to recoveredPassword
+                        contraseñasTemporales.add(recoveredPassword)
+                        recoverSuccess.value = true
+                        recoverError.value = false
+                        showDialog.value = true
+                    } else {
+                        recoverError.value = true
+                        recoverSuccess.value = false
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
+            ) {
+                Text(text = "Recuperar contraseña", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+
+            TextButton(onClick = onBackToLoginClick) {
+                Text(text = "Volver a Iniciar sesión", color = Color(0xFF0D47A1))
+            }
         }
     }
 }
 
+// Función para generar una contraseña temporal
 fun generateTemporaryPassword(): String {
     val chars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
-    return (1..8)
+    return (1..8) // Genera una contraseña de 8 caracteres
         .map { chars.random() }
         .joinToString("")
 }
 
+
+
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(onBackToLoginClick: () -> Unit) {
+    val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val firestore = FirebaseFirestore.getInstance()
+
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     val confirmPassword = remember { mutableStateOf("") }
+    val rut = remember { mutableStateOf("") }
+    val nombreCompleto = remember { mutableStateOf("") }
+    val direccion = remember { mutableStateOf("") }
+    val selectedRegion = remember { mutableStateOf("") }
+    val selectedComuna = remember { mutableStateOf("") }
     val registrationError = remember { mutableStateOf(false) }
-    val registrationSuccess = remember { mutableStateOf(false) }
-    val userExistsError = remember { mutableStateOf(false) }
+    val errorMessage = remember { mutableStateOf("") }
     val showDialog = remember { mutableStateOf(false) }
-    val isEmailPasswordFocused by remember { mutableStateOf(false) }
-    val isGeneratePasswordFocused by remember { mutableStateOf(false) }
-    val isRepeatPasswordFocused by remember { mutableStateOf(false) }
+
+    var expandedRegion by remember { mutableStateOf(false) }
+    var expandedComuna by remember { mutableStateOf(false) }
+
+    val regiones = listOf("Metropolitana", "Valparaíso", "Biobío", "Araucanía", "Los Lagos")
+    val comunasPorRegion = mapOf(
+        "Metropolitana" to listOf("Santiago", "Puente Alto", "Maipú"),
+        "Valparaíso" to listOf("Viña del Mar", "Valparaíso", "Quilpué"),
+        "Biobío" to listOf("Concepción", "Talcahuano", "Coronel"),
+        "Araucanía" to listOf("Temuco", "Villarrica", "Angol"),
+        "Los Lagos" to listOf("Puerto Montt", "Osorno", "Castro")
+    )
 
     if (showDialog.value) {
         AlertDialog(
             onDismissRequest = { showDialog.value = false },
-            title = { Text(text = "Registro exitoso") },
-            text = { Text(text = "Cuenta creada con éxito.") },
             confirmButton = {
-                TextButton(onClick = {
+                Button(onClick = {
                     showDialog.value = false
-                    onBackToLoginClick()
+                    onBackToLoginClick() // Llevar al inicio de sesión
                 }) {
-                    Text(text = "Aceptar")
+                    Text("Aceptar")
                 }
-            }
+            },
+            title = { Text("Registro Exitoso") },
+            text = { Text("El usuario ha sido registrado correctamente.") }
         )
     }
 
-    Column(
+    Box(
         modifier = Modifier
-            .background(Color.White, shape = RoundedCornerShape(16.dp))
-            .padding(24.dp)
-            .width(300.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxSize()
+            .background(Color(0xFFE3F2FD)),
+        contentAlignment = Alignment.Center
     ) {
-        TextField(
-            shape = RoundedCornerShape(20.dp),
-            value = email.value,
-            onValueChange = { email.value = it },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = if (isEmailPasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
-                unfocusedContainerColor = Color(0xFFF5F5F5),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            placeholder = { Text(text = "Correo Electrónico") },
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(12.dp))
-        )
-
-        TextField(
-            shape = RoundedCornerShape(20.dp),
-            value = password.value,
-            onValueChange = { password.value = it },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = if (isGeneratePasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
-                unfocusedContainerColor = Color(0xFFF5F5F5),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            placeholder = { Text(text = "Contraseña") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(12.dp))
-        )
-
-        TextField(
-            shape = RoundedCornerShape(20.dp),
-            value = confirmPassword.value,
-            onValueChange = { confirmPassword.value = it },
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = if (isRepeatPasswordFocused) Color(0xFFE1F0FC) else Color(0xFFE0EFFA),
-                unfocusedContainerColor = Color(0xFFF5F5F5),
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
-            ),
-            placeholder = { Text(text = "Repetir Contraseña") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-                .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(12.dp))
-        )
-
-        if (registrationError.value) {
-            Text(
-                text = "Error en el registro. Revisa los campos.",
-                color = Color.Red,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        if (userExistsError.value) {
-            Text(
-                text = "El usuario ya está registrado.",
-                color = Color.Red,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-
-        Button(
-            onClick = {
-                if (usuariosRegistrados.any { it.first == email.value }) {
-                    userExistsError.value = true
-                    registrationError.value = false
-                    registrationSuccess.value = false
-                } else if (email.value.isNotEmpty() &&
-                    password.value.isNotEmpty() &&
-                    password.value == confirmPassword.value &&
-                    usuariosRegistrados.size < 5
-                ) {
-                    usuariosRegistrados.add(email.value to password.value)
-                    registrationSuccess.value = true
-                    registrationError.value = false
-                    userExistsError.value = false
-                    showDialog.value = true
-                } else {
-                    registrationError.value = true
-                    registrationSuccess.value = false
-                    userExistsError.value = false
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
+                .fillMaxWidth(0.9f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(text = "Crear cuenta", color = Color.White, fontWeight = FontWeight.Bold)
-        }
+            Text(
+                text = "Crear Cuenta",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
 
-        TextButton(onClick = onBackToLoginClick) {
-            Text(text = "Volver a Iniciar sesión", color = Color(0xFF0D47A1))
+            val textFieldModifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+
+            CustomTextField(value = rut, label = "RUT", modifier = textFieldModifier)
+            Spacer(modifier = Modifier.height(2.dp))
+
+            CustomTextField(value = nombreCompleto, label = "Nombre Completo", modifier = textFieldModifier)
+            Spacer(modifier = Modifier.height(2.dp))
+
+            CustomTextField(value = direccion, label = "Dirección", modifier = textFieldModifier)
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Selector de Región
+            CustomDropdownField(
+                label = "Región",
+                selectedValue = selectedRegion,
+                expanded = expandedRegion,
+                onExpandedChange = { expandedRegion = it },
+                items = regiones,
+                onItemSelected = {
+                    selectedRegion.value = it
+                    selectedComuna.value = "" // Reiniciar comuna al cambiar región
+                    expandedRegion = false
+                }
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Selector de Comuna
+            CustomDropdownField(
+                label = "Comuna",
+                selectedValue = selectedComuna,
+                expanded = expandedComuna,
+                onExpandedChange = { expandedComuna = it },
+                items = comunasPorRegion[selectedRegion.value] ?: emptyList(),
+                onItemSelected = {
+                    selectedComuna.value = it
+                    expandedComuna = false
+                }
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+
+            CustomTextField(value = email, label = "Correo Electrónico", modifier = textFieldModifier)
+            Spacer(modifier = Modifier.height(2.dp))
+
+            CustomPasswordField(value = password, label = "Contraseña", modifier = textFieldModifier)
+            Spacer(modifier = Modifier.height(2.dp))
+
+            CustomPasswordField(value = confirmPassword, label = "Confirmar Contraseña", modifier = textFieldModifier)
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // Mostrar mensaje de error si hay problemas
+            if (registrationError.value) {
+                Text(
+                    text = errorMessage.value,
+                    color = Color.Red,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            // Botón de Crear Cuenta con Firebase Authentication y Firestore
+            Button(
+                onClick = {
+                    if (rut.value.isBlank() || nombreCompleto.value.isBlank() || direccion.value.isBlank() ||
+                        email.value.isBlank() || password.value.isBlank() || confirmPassword.value.isBlank() ||
+                        selectedRegion.value.isBlank() || selectedComuna.value.isBlank()
+                    ) {
+                        registrationError.value = true
+                        errorMessage.value = "Todos los campos son obligatorios"
+                        return@Button
+                    }
+
+                    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email.value).matches()) {
+                        registrationError.value = true
+                        errorMessage.value = "Correo electrónico no válido"
+                        return@Button
+                    }
+
+                    if (password.value.length < 6) {
+                        registrationError.value = true
+                        errorMessage.value = "La contraseña debe tener al menos 6 caracteres"
+                        return@Button
+                    }
+
+                    if (password.value != confirmPassword.value) {
+                        registrationError.value = true
+                        errorMessage.value = "Las contraseñas no coinciden"
+                        return@Button
+                    }
+
+                    auth.createUserWithEmailAndPassword(email.value, password.value)
+                        .addOnCompleteListener { task: Task<AuthResult> ->
+                            if (task.isSuccessful) {
+                                val userId = auth.currentUser?.uid
+
+                                if (userId != null) {
+                                    val usuario = hashMapOf(
+                                        "userId" to userId,
+                                        "rut" to rut.value,
+                                        "nombre_completo" to nombreCompleto.value,
+                                        "region" to selectedRegion.value,
+                                        "direccion" to direccion.value,
+                                        "comuna" to selectedComuna.value,
+                                        "email" to email.value
+                                    )
+
+                                    firestore.collection("UsuariosRegistrados")
+                                        .document(userId)  // Guardar con el mismo UID de Firebase Auth
+                                        .set(usuario)
+                                        .addOnSuccessListener {
+                                            showDialog.value = true
+                                            registrationError.value = false
+                                        }
+                                        .addOnFailureListener {
+                                            registrationError.value = true
+                                            errorMessage.value = "Error al registrar usuario en Firestore"
+                                        }
+                                } else {
+                                    registrationError.value = true
+                                    errorMessage.value = "Error al obtener el UID del usuario"
+                                }
+                            } else {
+                                registrationError.value = true
+                                errorMessage.value = task.exception?.message ?: "Error en el registro"
+                            }
+                        }
+
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
+            ) {
+                Text(text = "Crear cuenta", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            }
+
+            TextButton(onClick = onBackToLoginClick) {
+                Text(text = "Volver a Iniciar sesión", color = Color(0xFF0D47A1), fontSize = 16.sp)
+            }
         }
     }
 }
 
+
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CustomDropdownField(
+    label: String,
+    selectedValue: MutableState<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    items: List<String>,
+    onItemSelected: (String) -> Unit
+) {
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = onExpandedChange
+    ) {
+        TextField(
+            value = selectedValue.value,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label, fontSize = 16.sp, color = Color.Black) },
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFE3F2FD),
+                unfocusedContainerColor = Color(0xFFF5F5F5),
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
+            textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .padding(horizontal = 8.dp)
+                .border(1.dp, Color.Gray, RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .menuAnchor()
+                .clickable { onExpandedChange(true) }
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            items.forEach { item ->
+                DropdownMenuItem(
+                    text = { Text(item, fontSize = 16.sp, color = Color.Black) },
+                    onClick = { onItemSelected(item) }
+                )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+fun CustomTextField(value: MutableState<String>, label: String, modifier: Modifier = Modifier) {
+    TextField(
+        value = value.value,
+        onValueChange = { value.value = it },
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color(0xFFE3F2FD),
+            unfocusedContainerColor = Color(0xFFF5F5F5),
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent
+        ),
+        placeholder = { Text(label, fontSize = 16.sp, color = Color.Black) },
+        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .padding(horizontal = 8.dp)
+            .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+    )
+}
+
+@Composable
+fun CustomPasswordField(value: MutableState<String>, label: String, modifier: Modifier = Modifier) {
+    TextField(
+        value = value.value,
+        onValueChange = { value.value = it },
+        label = { Text(label, fontSize = 16.sp, color = Color.Black) },
+        visualTransformation = PasswordVisualTransformation(),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color(0xFFE3F2FD),
+            unfocusedContainerColor = Color(0xFFF5F5F5),
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent
+        ),
+        textStyle = TextStyle(fontSize = 16.sp, color = Color.Black),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(50.dp)
+            .padding(horizontal = 8.dp)
+            .border(1.dp, Color.Gray, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+    )
+}
 

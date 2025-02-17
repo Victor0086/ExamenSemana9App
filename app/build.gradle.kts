@@ -1,8 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.services)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
 
 android {
     namespace = "com.example.aplicacion"
@@ -40,17 +42,7 @@ android {
 }
 
 dependencies {
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.material3)
-    implementation(libs.ui)
-    implementation(libs.activity.compose)
-    implementation(libs.lifecycle.runtime.ktx)
-    implementation(libs.androidx.compose.ui.ui)
-    implementation(libs.androidx.compose.material3.material3)
-    implementation(libs.androidx.ui.text)
-
-
-
+    implementation("com.google.firebase:firebase-firestore-ktx:24.4.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -59,14 +51,23 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.foundation.android)
-    implementation(libs.androidx.activity.ktx)
     implementation("com.airbnb.android:lottie-compose:6.6.2")
+    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.play.services.location)
+    implementation(libs.testng)
+    implementation(libs.androidx.junit.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
 }
+
+
+
+
