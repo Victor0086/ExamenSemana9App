@@ -1,6 +1,5 @@
 package com.example.aplicacion
 
-import HablarScreen
 import androidx.compose.ui.tooling.preview.Preview
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -86,32 +85,119 @@ fun MainContent() {
         )
 
         when (currentScreen) {
-            "login" -> {
-                LoginScreen(
-                    onCreateAccountClick = { currentScreen = "register" },
-                    onForgotPasswordClick = { currentScreen = "recover" },
-                    onLoginSuccess = { isTemporary ->
-                        currentScreen = if (isTemporary) "changePassword" else "products"
-                    }
-                )
-            }
+            "login" -> LoginScreen(
+                onCreateAccountClick = { currentScreen = "register" },
+                onForgotPasswordClick = { currentScreen = "recover" },
+                onLoginSuccess = { isTemporary ->
+                    currentScreen = if (isTemporary) "changePassword" else "menu"
+                }
+            )
             "register" -> RegisterScreen(onBackToLoginClick = { currentScreen = "login" })
             "recover" -> RecoverPasswordScreen(onBackToLoginClick = { currentScreen = "login" })
             "changePassword" -> ChangePasswordScreen(onPasswordChanged = { currentScreen = "login" })
-            "products" -> ProductScreen(
-                onLogoutClick = { currentScreen = "login" },
-                onNavigateToHablar = { currentScreen = "hablar" }
+            "menu" -> MenuScreen(
+                onNavigateToEscribirYHablar = { currentScreen = "escribirYHablar" },
+                onNavigateToProductos = { currentScreen = "products" },
+                onNavigateToAyuda = { currentScreen = "ayuda" }
             )
-            "hablar" -> HablarScreen(onBack = { currentScreen = "products" })
+            "products" -> ProductScreen(
+                onBack = { currentScreen = "menu" },
+                onLogoutClick = { currentScreen = "login" },
+                onNavigateToHablar = { currentScreen = "escribirYHablar" }
+            )
 
+            "escribirYHablar" -> EscribirYHablarScreen(onBack = { currentScreen = "menu" })
+            "ayuda" -> AyudaScreen(onBack = { currentScreen = "menu" })
         }
     }
 }
 
+@Composable
+fun MenuScreen(
+    onNavigateToEscribirYHablar: () -> Unit,
+    onNavigateToProductos: () -> Unit,
+    onNavigateToAyuda: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFE3F2FD)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .background(Color.White)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.panda),
+                contentDescription = "Imagen de un panda",
+                modifier = Modifier
+                    .size(120.dp)
+                    .padding(bottom = 8.dp)
+            )
+
+            // Mensaje de bienvenida dinámico
+            Text(
+                text = "¡Bienvenido! Selecciona una opción:",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Botones optimizados
+            MenuButton("Escribir y Hablar", onNavigateToEscribirYHablar)
+            MenuButton("Ver Productos", onNavigateToProductos)
+            MenuButton("Ayuda", onNavigateToAyuda)
+        }
+    }
+}
+
+// Función reutilizable para los botones
+@Composable
+fun MenuButton(text: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF)),
+        modifier = Modifier.fillMaxWidth().padding(8.dp)
+    ) {
+        Text(text, color = Color.White)
+    }
+}
+
+
 
 @Composable
-fun ProductScreen(onLogoutClick: () -> Unit, onNavigateToHablar: () -> Unit) {
+fun ProductScreen(onBack: () -> Unit, onLogoutClick: () -> Unit, onNavigateToHablar: () -> Unit) {
+    val auth = FirebaseAuth.getInstance()
+    val firestore = FirebaseFirestore.getInstance()
+    var userName by remember { mutableStateOf("Usuario") }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
+
+    // Recuperar el nombre del usuario o su correo
+    LaunchedEffect(Unit) {
+        auth.currentUser?.let { user ->
+            val email = user.email ?: "Usuario"
+            val emailName = email.substringBefore("@")
+
+            // Intentar obtener el nombre real del usuario desde Firestore
+            firestore.collection("UsuariosRegistrados").document(user.uid).get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val nombreFirestore = document.getString("nombre_completo")
+                        userName = if (!nombreFirestore.isNullOrEmpty()) nombreFirestore else emailName
+                    } else {
+                        userName = emailName
+                    }
+                }
+                .addOnFailureListener {
+                    userName = emailName
+                }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -127,7 +213,7 @@ fun ProductScreen(onLogoutClick: () -> Unit, onNavigateToHablar: () -> Unit) {
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo y Nombre de la tienda
+            // Logo y Nombre
             Image(
                 painter = painterResource(id = R.drawable.panda),
                 contentDescription = "Logo Panda",
@@ -136,18 +222,17 @@ fun ProductScreen(onLogoutClick: () -> Unit, onNavigateToHablar: () -> Unit) {
                     .padding(bottom = 8.dp)
             )
             Text(
-                text = "Peet Food El Panda",
+                text = "Bienvenido, $userName",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 🔹 Lista de productos con LazyColumn que NO oculta el botón
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f) //
+                    .weight(1f)
             ) {
                 items(getProductList()) { product ->
                     ProductItem(product) {
@@ -159,20 +244,20 @@ fun ProductScreen(onLogoutClick: () -> Unit, onNavigateToHablar: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔹 Botón de "Texto a Voz"
+            // 🔹 Botón de "Volver"
             Button(
-                onClick = onNavigateToHablar,
+                onClick = onBack,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
             ) {
-                Text(text = "Texto a Voz", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(text = "Volver", color = Color.White, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 🔹 Botón de "Cerrar Sesión"
+            // Botón de Cerrar Sesión
             Button(
                 onClick = onLogoutClick,
                 modifier = Modifier
@@ -190,7 +275,6 @@ fun ProductScreen(onLogoutClick: () -> Unit, onNavigateToHablar: () -> Unit) {
         ProductDetailModal(product = it, onDismiss = { selectedProduct = null })
     }
 }
-
 
 
 
@@ -279,17 +363,17 @@ fun LoginScreen(
     val password = remember { mutableStateOf("") }
     val loginError = remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope() // Para manejar las coroutines
+    val coroutineScope = rememberCoroutineScope()
 
     // Estado para control de accesibilidad
     var isHighContrast by remember { mutableStateOf(false) }
     var textSize by remember { mutableStateOf(14.sp) }
 
-    // Función para alternar el modo de alto contraste
+
     fun toggleHighContrast() {
         isHighContrast = !isHighContrast
     }
-    // Estados para controlar el foco en los TextFields
+
     var isEmailFocused by remember { mutableStateOf(false) }
     var isPasswordFocused by remember { mutableStateOf(false) }
 
@@ -357,7 +441,7 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                         .border(width = 1.dp, color = Color.LightGray, shape = RoundedCornerShape(20.dp))
-                        .testTag("emailField"), // Agregado testTag
+                        .testTag("emailField"),
                     keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Next)
                 )
 
@@ -400,7 +484,7 @@ fun LoginScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 8.dp)
-                        .testTag("loginButton"), // Agregado testTag
+                        .testTag("loginButton"),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00B0FF))
                 ) {
                     Text(text = "Iniciar sesión", color = Color.White, fontWeight = FontWeight.Bold)
@@ -671,7 +755,8 @@ fun RecoverPasswordScreen(onBackToLoginClick: () -> Unit) {
 // Función para generar una contraseña temporal
 fun generateTemporaryPassword(): String {
     val chars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
-    return (1..8) // Genera una contraseña de 8 caracteres
+    return (1..8)
+            
         .map { chars.random() }
         .joinToString("")
 }
@@ -716,7 +801,7 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
             confirmButton = {
                 Button(onClick = {
                     showDialog.value = false
-                    onBackToLoginClick() // Llevar al inicio de sesión
+                    onBackToLoginClick()
                 }) {
                     Text("Aceptar")
                 }
@@ -769,7 +854,7 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
                 items = regiones,
                 onItemSelected = {
                     selectedRegion.value = it
-                    selectedComuna.value = "" // Reiniciar comuna al cambiar región
+                    selectedComuna.value = ""
                     expandedRegion = false
                 }
             )
@@ -798,7 +883,7 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
             CustomPasswordField(value = confirmPassword, label = "Confirmar Contraseña", modifier = textFieldModifier)
             Spacer(modifier = Modifier.height(2.dp))
 
-            // Mostrar mensaje de error si hay problemas
+
             if (registrationError.value) {
                 Text(
                     text = errorMessage.value,
@@ -855,7 +940,7 @@ fun RegisterScreen(onBackToLoginClick: () -> Unit) {
                                     )
 
                                     firestore.collection("UsuariosRegistrados")
-                                        .document(userId)  // Guardar con el mismo UID de Firebase Auth
+                                        .document(userId)
                                         .set(usuario)
                                         .addOnSuccessListener {
                                             showDialog.value = true

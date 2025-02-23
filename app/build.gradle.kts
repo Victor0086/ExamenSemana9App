@@ -42,6 +42,8 @@ android {
 }
 
 dependencies {
+    implementation ("com.airbnb.android:lottie-compose:5.2.0")
+    implementation ("androidx.navigation:navigation-compose:2.5.3")
     implementation("com.google.firebase:firebase-firestore-ktx:24.4.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
